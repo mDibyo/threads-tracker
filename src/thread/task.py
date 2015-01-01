@@ -12,7 +12,7 @@ Module structure:
 
 import uuid
 import json
-import time.util
+from time.util import Datetime, Timedelta
 
 
 __author__ = "Dibyo Majumdar"
@@ -28,11 +28,11 @@ class Task(object):
 
     def __init__(self,
                  name: str,
-                 start_time: time.util.Datetime=None,
-                 end_time: time.util.Datetime=None,
+                 start_time: Datetime=None,
+                 end_time: Datetime=None,
                  importance: float=5,
                  repeating: bool=False,
-                 period: time.util.Timedelta=None,
+                 period: Timedelta=None,
                  partial_completion: bool=False,
                  max_divisions: int=-1):
         """
@@ -46,7 +46,7 @@ class Task(object):
         :param max_divisions: the maximum number of non-consecutive
             time chunks that the task can be divided into
         """
-        self.uid = uuid.uuid4()
+        self.uid = str(uuid.uuid4())
         self.name = name
         self.start_time = self.end_time = None
         self._importance = importance
@@ -80,14 +80,12 @@ class Task(object):
             return {
                 'uid': o.uid,
                 'name': o.name,
-                'start_time': time.util.Datetime.DatetimeJSONEncoder().
+                'start_time': Datetime.DatetimeJSONEncoder().
                 encode(o.start_time),
-                'end_time': time.util.Datetime.DatetimeJSONEncoder().
-                encode(o.end_time),
+                'end_time': Datetime.DatetimeJSONEncoder().encode(o.end_time),
                 'importance': o.importance,
                 'repeating': o.repeating,
-                'period': time.util.Timedelta.TimedeltaJSONEncoder().
-                encode(o.period),
+                'period': Timedelta.TimedeltaJSONEncoder().encode(o.period),
                 'partial_completion': o.partial_completion,
                 'max_divisions': o.max_divisions
             }
@@ -110,11 +108,11 @@ class Task(object):
             """
             d = json.loads(s)
 
-            d['start_time'] = time.util.Datetime.DatetimeJSONDecoder(). \
+            d['start_time'] = Datetime.DatetimeJSONDecoder().\
                 decode(d.get('start_time', None))
-            d['end_time'] = time.util.Datetime.DatetimeJSONDecoder(). \
+            d['end_time'] = Datetime.DatetimeJSONDecoder().\
                 decode(d.get('end_time', None))
-            d['period'] = time.util.Timedelta.TimedeltaJSONDecoder(). \
+            d['period'] = Timedelta.TimedeltaJSONDecoder().\
                 decode(d.get('period', None))
 
             return d
@@ -131,13 +129,13 @@ class Task(object):
             kwargs = self.to_dict(s)
 
             task = Task(**kwargs)
-            task.uid = kwargs.get('uid', uuid.uuid4())
+            task.uid = kwargs.get('uid', str(uuid.uuid4()))
 
             return task
 
     def change_time(self,
-                    new_start_time: time.util.Datetime,
-                    new_end_time: time.util.Datetime=None):
+                    new_start_time: Datetime,
+                    new_end_time: Datetime=None):
         """
         Change the start and (optionally) end time of a task.
 
@@ -183,11 +181,11 @@ class Event(Task):
 
     def __init__(self,
                  name: str,
-                 start_time: time.util.Datetime,
-                 end_time: time.util.Datetime,
+                 start_time: Datetime,
+                 end_time: Datetime,
                  importance: float=5,
                  repeating: bool=False,
-                 period: time.util.Timedelta=None,
+                 period: Timedelta=None,
                  partial_completion: bool=False,
                  max_divisions: int=-1):
         """
@@ -249,7 +247,7 @@ class Event(Task):
             kwargs = Task.TaskJSONDecoder.to_dict(s)
 
             event = Event(**kwargs)
-            event.uid = kwargs.get('uid', uuid.uuid4())
+            event.uid = kwargs.get('uid', str(uuid.uuid4()))
 
             return event
 
@@ -263,11 +261,11 @@ class Assignment(Task):
 
     def __init__(self,
                  name: str,
-                 deadline: time.util.Datetime,
-                 expected_duration: time.util.Timedelta,
+                 deadline: Datetime,
+                 expected_duration: Timedelta=None,
                  importance: float=5,
                  repeating: bool=False,
-                 period: time.util.Timedelta=None,
+                 period: Timedelta=None,
                  partial_completion: bool=False,
                  max_divisions: int=-1):
         """
@@ -313,9 +311,9 @@ class Assignment(Task):
             """
             encoded = super(Assignment.AssignmentJSONEncoder, self).default(o)
 
-            encoded['deadline'] = time.util.Datetime.DatetimeJSONEncoder().\
+            encoded['deadline'] = Datetime.DatetimeJSONEncoder().\
                 encode(o.deadline)
-            encoded['expected_duration'] = time.util.Timedelta.\
+            encoded['expected_duration'] = Timedelta.\
                 TimedeltaJSONEncoder().encode(o.expected_duration)
 
             encoded['type'] = 'assignment'
@@ -341,10 +339,10 @@ class Assignment(Task):
             """
             d = Task.TaskJSONDecoder.to_dict(s)
 
-            d['deadline'] = time.util.Datetime.DatetimeJSONDecoder(). \
-                decode(d['deadline'])
-            d['expected_duration'] = time.util.Timedelta. \
-                TimedeltaJSONDecoder().decode(d['expected_duration'])
+            d['deadline'] = Datetime.DatetimeJSONDecoder().\
+                decode(d.get('deadline'))
+            d['expected_duration'] = Timedelta.TimedeltaJSONDecoder().\
+                decode(d.get('expected_duration', None))
 
             return d
 
@@ -360,13 +358,13 @@ class Assignment(Task):
             kwargs = self.to_dict(s)
 
             assignment = Assignment(**kwargs)
-            assignment.uid = kwargs.get('uid', uuid.uuid4())
+            assignment.uid = kwargs.get('uid', str(uuid.uuid4()))
 
             return assignment
 
     def change_time(self,
-                    new_start_time: time.util.Datetime,
-                    new_end_time: time.util.Datetime=None):
+                    new_start_time: Datetime,
+                    new_end_time: Datetime=None):
         """
         Change the start and (optionally) end time of a assignment.
         Also change the expected duration of the assignment if

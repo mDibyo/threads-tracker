@@ -89,13 +89,13 @@ class Timedelta(datetime.timedelta):
     implementations for a JSON encoder and decoder.
     """
     @classmethod
-    def from_json(cls, s: str):
+    def from_json(cls, f: float):
         """
         Create a Timedelta object from its JSON representation.
 
-        :param s: JSON-encoded float for the Timedelta object
+        :param f: JSON-encoded float for the Timedelta object
         """
-        return cls(seconds=int(s))
+        return cls(seconds=float(f))
 
     def for_json(self):
         """

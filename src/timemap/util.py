@@ -35,6 +35,12 @@ class Datetime(datetime.datetime):
     """
     Subclass of datetime.datetime defined in order to add
     implementations for a JSON encoder and decoder.
+
+    >>> dt = Datetime(2015, 1, 12, 11, 23, 46, tzinfo=datetime.timezone.utc)
+    >>> date = datetime.datetime(2015, 1, 12, 11, 23, 46,
+    ...                          tzinfo=datetime.timezone.utc)
+    >>> dt == date
+    True
     """
     JSON_FORMAT = "%Y-%m-%d %H:%M:%S%z"
 
@@ -58,13 +64,13 @@ class Datetime(datetime.datetime):
         JSON encoder class for Datetime subclassing json.JSONEncoder.
         It represents the object as a formatted string.
         """
-        def default(self, o: Datetime):
+        def default(self, o: "Datetime"):
             """
             Convert object to string.
 
             :param o: the Datetime object to be encoded
             """
-            return o.for_json() if o else None
+            return o.for_json() if o is not None else None
 
     class DatetimeJSONDecoder(json.JSONDecoder):
         """
@@ -80,7 +86,8 @@ class Datetime(datetime.datetime):
             :param _w: unused variable kept to match superclass method
                 signature
             """
-            return Datetime.from_json(s) if s else s
+            obj = json.loads(s)
+            return Datetime.from_json(obj) if obj is not None else None
 
 
 class Timedelta(datetime.timedelta):
@@ -108,13 +115,13 @@ class Timedelta(datetime.timedelta):
         JSON encoder class for Timedelta subclassing json.JSONEncoder.
         It represents the object as the number of seconds it is.
         """
-        def default(self, o: Timedelta):
+        def default(self, o: "Timedelta"):
             """
             Convert object to integer.
 
             :param o: the Timedelta object to be encoded
             """
-            return o.for_json() if o else None
+            return o.for_json() if o is not None else None
 
     class TimedeltaJSONDecoder(json.JSONDecoder):
         """
@@ -130,4 +137,5 @@ class Timedelta(datetime.timedelta):
             :param _w: unused variable kept to match superclass method
                 signature
             """
-            return Timedelta.from_json(f) if f else f
+            obj = json.loads(f)
+            return Timedelta.from_json(obj) if obj is not None else None

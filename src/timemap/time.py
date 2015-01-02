@@ -12,7 +12,7 @@ Module structure:
 
 import json
 
-from time.util import Datetime, Timedelta
+from timemap.util import Datetime, Timedelta
 
 
 __author__ = "Dibyo Majumdar"
@@ -39,8 +39,8 @@ class TimeChunk(object):
     class TimeChunkJSONEncoder(json.JSONEncoder):
         """
         JSON encoder class for TimeChunk subclassing json.JSONEncoder.
-        It relies on custom JSON encoder classes for time.util.Datetime
-        and time.util.Timedelta (which are defined inside the
+        It relies on custom JSON encoder classes for timemap.util.Datetime
+        and timemap.util.Timedelta (which are defined inside the
         corresponding classes) to encode them as strings.
         """
         def default(self, o: TimeChunk):
@@ -59,16 +59,16 @@ class TimeChunk(object):
     class TimeChunkJSONDecoder(json.JSONDecoder):
         """
         JSON decoder class for TimeChunk subclassing json.JSONDecoder.
-        It relies on custom JSON decoder classes for time.util.Datetime
-        and time.util.Timedelta (which are defined inside the
+        It relies on custom JSON decoder classes for timemap.util.Datetime
+        and timemap.util.Timedelta (which are defined inside the
         corresponding classes) to decode them from encoded strings.
         """
         @staticmethod
         def to_dict(s: str):
             """
             Convert the JSON-encoded string for a time chunk to a
-            dictionary and then decode strings for time.util.Datetime
-            and time.util.Timedelta instances into corresponding
+            dictionary and then decode strings for timemap.util.Datetime
+            and timemap.util.Timedelta instances into corresponding
             instances.
 
             :param s: JSON-encoded string for the time chunk

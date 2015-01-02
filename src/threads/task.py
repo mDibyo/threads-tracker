@@ -12,7 +12,7 @@ Module structure:
 
 import uuid
 import json
-from time.util import Datetime, Timedelta
+from timemap.util import Datetime, Timedelta
 
 
 __author__ = "Dibyo Majumdar"
@@ -24,6 +24,14 @@ class Task(object):
     Represents a task.  This serves as the base class of all typed of
     tasks. It is also the final representation of all tasks in the
     created schedule.
+
+    >>> import datetime
+    >>> dt = Datetime(2015, 1, 12, 11, 23, 46,
+    ...               tzinfo=datetime.timezone.utc)
+    >>> s = Task.TaskJSONEncoder().encode(t)
+    >>> t = Task("try out this cool thing", dt)
+    >>> print(t)
+    Task: try out this cool thing in 2015-01-12 11:23:46+00:00-None
     """
 
     def __init__(self,
@@ -34,7 +42,8 @@ class Task(object):
                  repeating: bool=False,
                  period: Timedelta=None,
                  partial_completion: bool=False,
-                 max_divisions: int=-1):
+                 max_divisions: int=-1,
+                 thread_name: str=None):
         """
         :param name: the name of the task
         :param start_time: the start time of the task
@@ -45,6 +54,8 @@ class Task(object):
         :param partial_completion: whether partial completion is useful
         :param max_divisions: the maximum number of non-consecutive
             time chunks that the task can be divided into
+        :param thread_name: the name of the thread to which this task
+            belongs
         """
         self.uid = str(uuid.uuid4())
         self.name = name
@@ -54,6 +65,7 @@ class Task(object):
         self.period = period
         self.partial_completion = partial_completion
         self.max_divisions = max_divisions
+        self.thread_name = thread_name
 
         if start_time:
             self.change_time(start_time, end_time)
@@ -62,16 +74,33 @@ class Task(object):
         """
         Return string representation of self.
         """
-        return "Task {0.name} in {0.start_time}-{0.end_time}".format(self)
+        return "Task: '{0.name}' in {0.start_time}-{0.end_time}".format(self)
+
+    def __eq__(self, other: "Task"):
+        """
+        Check equality of two tasks by checking if their uid is the same.
+
+        :param other: the other task to be compared
+        """
+        return self.uid == other.uid
 
     class TaskJSONEncoder(json.JSONEncoder):
         """
         JSON encoder class for Task subclassing json.JSONEncoder.  It
-        relies on custom JSON encoder classes for time.util.Datetime
-        and time.util.Timedelta (which are defined inside the
+        relies on custom JSON encoder classes for timemap.util.Datetime
+        and timemap.util.Timedelta (which are defined inside the
         corresponding classes) to encode them as strings.
+
+        >>> import datetime
+        >>> dt = Datetime(2015, 1, 12, 11, 23, 46,
+        ...               tzinfo=datetime.timezone.utc)
+        >>> t = Task("try out this cool thing", dt)
+        >>> s = Task.TaskJSONEncoder().encode(t)
+        >>> t_new = Task.TaskJSONDecoder().decode(s)
+        >>> t_new == t
+        True
         """
-        def default(self, o: Task):
+        def default(self, o: "Task"):
             """
             Convert object to JSON-serializable dictionary.
 
@@ -87,22 +116,23 @@ class Task(object):
                 'repeating': o.repeating,
                 'period': Timedelta.TimedeltaJSONEncoder().encode(o.period),
                 'partial_completion': o.partial_completion,
-                'max_divisions': o.max_divisions
+                'max_divisions': o.max_divisions,
+                'thread_name': o.thread_name
             }
 
     class TaskJSONDecoder(json.JSONDecoder):
         """
         JSON decoder class for Task subclassing json.JSONDecoder.  It
-        relies on custom JSON decoder classes for time.util.Datetime
-        and time.util.Timedelta (which are defined inside the
+        relies on custom JSON decoder classes for timemap.util.Datetime
+        and timemap.util.Timedelta (which are defined inside the
         corresponding classes) to decode them from encoded strings.
         """
         @staticmethod
         def to_dict(s: str):
             """
             Convert the JSON-encoded string for a task to a dictionary
-            and then decode strings for time.util.Datetime and
-            time.util.Timedelta instances into corresponding instances.
+            and then decode strings for timemap.util.Datetime and
+            timemap.util.Timedelta instances into corresponding instances.
 
             :param s: JSON-encoded string for the task
             """
@@ -115,7 +145,10 @@ class Task(object):
             d['period'] = Timedelta.TimedeltaJSONDecoder().\
                 decode(d.get('period', None))
 
-            return d
+            uid = d.get('uid', None)
+            del d['uid']
+
+            return uid, d
 
         def decode(self, s: str, _w=None):
             """
@@ -126,10 +159,10 @@ class Task(object):
             :param _w: unused variable kept to match superclass method
                 signature
             """
-            kwargs = self.to_dict(s)
+            uid, kwargs = self.to_dict(s)
 
             task = Task(**kwargs)
-            task.uid = kwargs.get('uid', str(uuid.uuid4()))
+            task.uid = uid if uid is not None else uuid.uuid4()
 
             return task
 
@@ -162,7 +195,7 @@ class Task(object):
 
         :param new_importance: the new importance of the task
         """
-        if 0 <= new_importance < 10:
+        if 0 <= new_importance <= 10:
             self._importance = new_importance
         else:
             raise Exception("Invalid importance for task. ")
@@ -207,7 +240,7 @@ class Event(Task):
         """
         Return string representation of self,
         """
-        return "Event {0.name} in {0.start_time}-{0.end_time}".format(self)
+        return "Event: '{0.name}' in {0.start_time}-{0.end_time}".format(self)
 
     class EventJSONEncoder(Task.TaskJSONEncoder):
         """
@@ -216,7 +249,7 @@ class Event(Task):
         deviating from it because it represents only a subset of tasks
         (ie. events).
         """
-        def default(self, o: Event):
+        def default(self, o: "Event"):
             """
             Convert object to JSON-serializable dictionary and record
             task type (ie. event) in it.
@@ -244,10 +277,10 @@ class Event(Task):
             :param _w: unused variable kept to match superclass method
                 signature
             """
-            kwargs = Task.TaskJSONDecoder.to_dict(s)
+            uid, kwargs = Task.TaskJSONDecoder.to_dict(s)
 
             event = Event(**kwargs)
-            event.uid = kwargs.get('uid', str(uuid.uuid4()))
+            event.uid = uid if uid is not None else uuid.uuid4()
 
             return event
 
@@ -293,7 +326,7 @@ class Assignment(Task):
         """
         Return string representation of self,
         """
-        return "Assignment {0.name} by {0.deadline}".format(self)
+        return "Assignment: '{0.name}' by {0.deadline}".format(self)
 
     class AssignmentJSONEncoder(Task.TaskJSONEncoder):
         """
@@ -302,7 +335,7 @@ class Assignment(Task):
         superclass.  It deviates because it represents only a subset of
         tasks (ie. assignments) and therefore, has a deadline.
         """
-        def default(self, o: Assignment):
+        def default(self, o: "Assignment"):
             """
             Convert object to JSON-serializable dictionary and record
             task type (ie. assignment) in it.
@@ -330,21 +363,21 @@ class Assignment(Task):
         def to_dict(s: str):
             """
             Convert the JSON-encoded string for an assignment to a
-            dictionary and then decode strings for time.util.Datetime
-            and time.util.Timedelta instances into corresponding
+            dictionary and then decode strings for timemap.util.Datetime
+            and timemap.util.Timedelta instances into corresponding
             instances.  It relies to a large extent on the
             corresponding superclass method.
 
             :param s: JSON-encoded string for the task
             """
-            d = Task.TaskJSONDecoder.to_dict(s)
+            uid, d = Task.TaskJSONDecoder.to_dict(s)
 
             d['deadline'] = Datetime.DatetimeJSONDecoder().\
                 decode(d.get('deadline'))
             d['expected_duration'] = Timedelta.TimedeltaJSONDecoder().\
                 decode(d.get('expected_duration', None))
 
-            return d
+            return uid, d
 
         def decode(self, s: str, _w=None):
             """
@@ -355,10 +388,10 @@ class Assignment(Task):
             :param _w: unused variable kept to match superclass method
                 signature
             """
-            kwargs = self.to_dict(s)
+            uid, kwargs = self.to_dict(s)
 
             assignment = Assignment(**kwargs)
-            assignment.uid = kwargs.get('uid', str(uuid.uuid4()))
+            assignment.uid = uid if uid is not None else uuid.uuid4()
 
             return assignment
 

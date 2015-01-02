@@ -84,87 +84,68 @@ class Task(object):
         """
         return self.uid == other.uid
 
-    class TaskJSONEncoder(json.JSONEncoder):
+    def to_json(self):
         """
-        JSON encoder class for Task subclassing json.JSONEncoder.  It
-        relies on custom JSON encoder classes for timemap.util.Datetime
-        and timemap.util.Timedelta (which are defined inside the
-        corresponding classes) to encode them as strings.
+        Convert to JSON-encoded string.  It relies on JSON converters
+        for timemap.util.Datetime and timemap.util.Timedelta to encode
+        them as strings.
 
         >>> import datetime
         >>> dt = Datetime(2015, 1, 12, 11, 23, 46,
         ...               tzinfo=datetime.timezone.utc)
         >>> t = Task("try out this cool thing", dt)
-        >>> s = Task.TaskJSONEncoder().encode(t)
+        >>> s = t.for_json()
         >>> t_new = Task.TaskJSONDecoder().decode(s)
         >>> t_new == t
         True
         """
-        def default(self, o: "Task"):
-            """
-            Convert object to JSON-serializable dictionary.
+        return {
+            'uid': self.uid,
+            'name': self.name,
+            'start_time': self.start_time.to_json(),
+            'end_time': self.end_time.to_json(),
+            'importance': self.importance,
+            'repeating': self.repeating,
+            'period': self.period.to_json(),
+            'partial_completion': self.partial_completion,
+            'max_divisions': self.max_divisions,
+            'thread_name': self.thread_name
+        }
 
-            :param o: the Task object to be encoded
-            """
-            return {
-                'uid': o.uid,
-                'name': o.name,
-                'start_time': Datetime.DatetimeJSONEncoder().
-                encode(o.start_time),
-                'end_time': Datetime.DatetimeJSONEncoder().encode(o.end_time),
-                'importance': o.importance,
-                'repeating': o.repeating,
-                'period': Timedelta.TimedeltaJSONEncoder().encode(o.period),
-                'partial_completion': o.partial_completion,
-                'max_divisions': o.max_divisions,
-                'thread_name': o.thread_name
-            }
-
-    class TaskJSONDecoder(json.JSONDecoder):
+    @staticmethod
+    def json_to_dict(d):
         """
-        JSON decoder class for Task subclassing json.JSONDecoder.  It
-        relies on custom JSON decoder classes for timemap.util.Datetime
-        and timemap.util.Timedelta (which are defined inside the
-        corresponding classes) to decode them from encoded strings.
+        Convert the JSON representation of a task to an object
+        dictionary decoding strings for timemap.util.Datetime and
+        timemap.util.Timedelta instances into corresponding instances.
+
+        :param d: JSON dictionary representing the task
         """
-        @staticmethod
-        def to_dict(s: str):
-            """
-            Convert the JSON-encoded string for a task to a dictionary
-            and then decode strings for timemap.util.Datetime and
-            timemap.util.Timedelta instances into corresponding instances.
+        d['start_time'] = Datetime.from_json(d.get('start_time', None))
+        d['end_time'] = Datetime.from_json(d.get('end_time', None))
+        d['period'] = Timedelta.from_json(d.get('period', None))
 
-            :param s: JSON-encoded string for the task
-            """
-            d = json.loads(s)
+        return d
 
-            d['start_time'] = Datetime.DatetimeJSONDecoder().\
-                decode(d.get('start_time', None))
-            d['end_time'] = Datetime.DatetimeJSONDecoder().\
-                decode(d.get('end_time', None))
-            d['period'] = Timedelta.TimedeltaJSONDecoder().\
-                decode(d.get('period', None))
+    @classmethod
+    def from_json(cls, s):
+        """
+        Create a Task instance from its JSON-encoded string
+        representation.
 
-            uid = d.get('uid', None)
-            del d['uid']
+        :param s: JSON-encoded string for the task.
+        """
+        kwargs = cls.json_to_dict(s)
 
-            return uid, d
+        uid = None
+        if 'uid' in kwargs:
+            uid = kwargs['uid']
+            del kwargs['uid']
 
-        def decode(self, s: str, _w=None):
-            """
-            Create a Task instance from its JSON-encoded string
-            representation.
+        task = cls(**kwargs)
+        cls.uid = uid if uid is not None else uuid.uuid4()
 
-            :param s: JSON-encoded string for the task.
-            :param _w: unused variable kept to match superclass method
-                signature
-            """
-            uid, kwargs = self.to_dict(s)
-
-            task = Task(**kwargs)
-            task.uid = uid if uid is not None else uuid.uuid4()
-
-            return task
+        return task
 
     def change_time(self,
                     new_start_time: Datetime,
@@ -242,47 +223,34 @@ class Event(Task):
         """
         return "Event: '{0.name}' in {0.start_time}-{0.end_time}".format(self)
 
-    class EventJSONEncoder(Task.TaskJSONEncoder):
+    def to_json(self):
         """
-        JSON encoder class for Event subclassing Task.TaskJSONEncoder.
-        It is reliant almost completely on its superclass only
-        deviating from it because it represents only a subset of tasks
-        (ie. events).
+        Convert to JSON-encoded string.
         """
-        def default(self, o: "Event"):
-            """
-            Convert object to JSON-serializable dictionary and record
-            task type (ie. event) in it.
+        encoded = super(Event, self).to_json()
 
-            :param o: the event object to be encoded
-            """
-            encoded = super(Event.EventJSONEncoder, self).default(o)
+        encoded['type'] = 'event'
+        return encoded
 
-            encoded['type'] = 'event'
-            return encoded
-
-    class EventJSONDecoder(Task.TaskJSONDecoder):
+    @classmethod
+    def from_json(cls, s):
         """
-        JSON decoder class for Event subclassing Task.TaskJSONDecoder.
-        It is reliant almost completely on its superclass only
-        deviating from it because it represents only a subset of tasks
-        (ie. events).
+        Create an Event instance from its JSON-encoded string
+        representation.
+
+        :param s: JSON-encoded string for the event
         """
-        def decode(self, s: str, _w=None):
-            """
-            Create an Event instance from its JSON-encoded string
-            representation.
+        kwargs = cls.json_to_dict(s)
 
-            :param s: JSON-encoded string for the event.
-            :param _w: unused variable kept to match superclass method
-                signature
-            """
-            uid, kwargs = Task.TaskJSONDecoder.to_dict(s)
+        uid = None
+        if 'uid' in kwargs:
+            uid = kwargs['uid']
+            del kwargs['uid']
 
-            event = Event(**kwargs)
-            event.uid = uid if uid is not None else uuid.uuid4()
+        task = cls(**kwargs)
+        cls.uid = uid if uid is not None else uuid.uuid4()
 
-            return event
+        return task
 
 
 class Assignment(Task):
@@ -328,72 +296,34 @@ class Assignment(Task):
         """
         return "Assignment: '{0.name}' by {0.deadline}".format(self)
 
-    class AssignmentJSONEncoder(Task.TaskJSONEncoder):
+    def to_json(self):
         """
-        JSON encoder class for Assignment subclassing
-        Task.TaskJSONEncoder.  It is reliant to a large extent on its
-        superclass.  It deviates because it represents only a subset of
-        tasks (ie. assignments) and therefore, has a deadline.
+        Convert to JSON-encoded string.
         """
-        def default(self, o: "Assignment"):
-            """
-            Convert object to JSON-serializable dictionary and record
-            task type (ie. assignment) in it.
+        encoded = super(Assignment, self).to_json()
 
-            :param o: the assignment object to be encoded
-            """
-            encoded = super(Assignment.AssignmentJSONEncoder, self).default(o)
+        encoded['deadline'] = self.deadline.to_json()
+        encoded['expected_duration'] = self.expected_duration.to_json()
+        encoded['type'] = 'assignment'
 
-            encoded['deadline'] = Datetime.DatetimeJSONEncoder().\
-                encode(o.deadline)
-            encoded['expected_duration'] = Timedelta.\
-                TimedeltaJSONEncoder().encode(o.expected_duration)
+        return encoded
 
-            encoded['type'] = 'assignment'
-            return encoded
-
-    class AssignmentJSONDecoder(Task.TaskJSONDecoder):
+    @staticmethod
+    def json_to_dict(d):
         """
-        JSON decoder class for Assignment subclassing
-        Task.TaskJSONDecoder.  It is reliant to a large extent on its
-        superclass.  It deviates because it represents only a subset of
-        tasks (ie. assignments) and therefore, has a deadline.
+        Convert the JSON representation of an assignment to an object
+        dictionary decoding strings for timemap.util.Datetime and
+        timemap.util.Timedelta instances into corresponding instances.
+
+        :param d: JSON dictionary representing the task
         """
-        @staticmethod
-        def to_dict(s: str):
-            """
-            Convert the JSON-encoded string for an assignment to a
-            dictionary and then decode strings for timemap.util.Datetime
-            and timemap.util.Timedelta instances into corresponding
-            instances.  It relies to a large extent on the
-            corresponding superclass method.
+        d = Task.json_to_dict(d)
 
-            :param s: JSON-encoded string for the task
-            """
-            uid, d = Task.TaskJSONDecoder.to_dict(s)
+        d['deadline'] = Datetime.from_json(d.get('deadline', None))
+        d['expected_duration'] = Timedelta.from_json(d.get('expected_duration',
+                                                           None))
 
-            d['deadline'] = Datetime.DatetimeJSONDecoder().\
-                decode(d.get('deadline'))
-            d['expected_duration'] = Timedelta.TimedeltaJSONDecoder().\
-                decode(d.get('expected_duration', None))
-
-            return uid, d
-
-        def decode(self, s: str, _w=None):
-            """
-            Create an Assignment instance from its JSON-encoded string
-            representation.
-
-            :param s: JSON-encoded string for the assignment.
-            :param _w: unused variable kept to match superclass method
-                signature
-            """
-            uid, kwargs = self.to_dict(s)
-
-            assignment = Assignment(**kwargs)
-            assignment.uid = uid if uid is not None else uuid.uuid4()
-
-            return assignment
+        return d
 
     def change_time(self,
                     new_start_time: Datetime,

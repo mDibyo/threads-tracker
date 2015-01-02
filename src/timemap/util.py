@@ -53,41 +53,11 @@ class Datetime(datetime.datetime):
         """
         return cls.strptime(s, cls.JSON_FORMAT)
 
-    def for_json(self):
+    def to_json(self):
         """
         Convert object to a JSON-string representation.
         """
         return self.strftime(self.JSON_FORMAT)
-
-    class DatetimeJSONEncoder(json.JSONEncoder):
-        """
-        JSON encoder class for Datetime subclassing json.JSONEncoder.
-        It represents the object as a formatted string.
-        """
-        def default(self, o: "Datetime"):
-            """
-            Convert object to string.
-
-            :param o: the Datetime object to be encoded
-            """
-            return o.for_json() if o is not None else None
-
-    class DatetimeJSONDecoder(json.JSONDecoder):
-        """
-        JSON decoder class for Datetime subclassing json.JSONDecoder.
-        Object is represented in JSON as a formatted string.
-        """
-        def decode(self, s: str, _w=None):
-            """
-            Create a Datetime instance from its JSON-encoded string
-            representation.
-
-            :param s: JSON-encoded string for the Datetime object.
-            :param _w: unused variable kept to match superclass method
-                signature
-            """
-            obj = json.loads(s)
-            return Datetime.from_json(obj) if obj is not None else None
 
 
 class Timedelta(datetime.timedelta):
@@ -104,38 +74,8 @@ class Timedelta(datetime.timedelta):
         """
         return cls(seconds=float(f))
 
-    def for_json(self):
+    def to_json(self):
         """
         Convert object to a JSON-string representation.
         """
         return self.total_seconds()
-
-    class TimedeltaJSONEncoder(json.JSONEncoder):
-        """
-        JSON encoder class for Timedelta subclassing json.JSONEncoder.
-        It represents the object as the number of seconds it is.
-        """
-        def default(self, o: "Timedelta"):
-            """
-            Convert object to integer.
-
-            :param o: the Timedelta object to be encoded
-            """
-            return o.for_json() if o is not None else None
-
-    class TimedeltaJSONDecoder(json.JSONDecoder):
-        """
-        JSON decoder class for Timedelta subclassing json.JSONDecoder.
-        Object is represented in JSON as the number of seconds it is.
-        """
-        def decode(self, f: float, _w=None):
-            """
-            Create a Timedelta instance from its JSON-encoded float
-            representation.
-
-            :param f: JSON-encoded float for the Timedelta object.
-            :param _w: unused variable kept to match superclass method
-                signature
-            """
-            obj = json.loads(f)
-            return Timedelta.from_json(obj) if obj is not None else None

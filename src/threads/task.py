@@ -11,7 +11,6 @@ Module structure:
 """
 
 import uuid
-import json
 from timemap.util import Datetime, Timedelta
 
 
@@ -28,7 +27,6 @@ class Task(object):
     >>> import datetime
     >>> dt = Datetime(2015, 1, 12, 11, 23, 46,
     ...               tzinfo=datetime.timezone.utc)
-    >>> s = Task.TaskJSONEncoder().encode(t)
     >>> t = Task("try out this cool thing", dt)
     >>> print(t)
     Task: try out this cool thing in 2015-01-12 11:23:46+00:00-None
@@ -86,7 +84,7 @@ class Task(object):
 
     def to_json(self):
         """
-        Convert to JSON-encoded string.  It relies on JSON converters
+        Convert to JSON representation.  It relies on JSON converters
         for timemap.util.Datetime and timemap.util.Timedelta to encode
         them as strings.
 
@@ -94,8 +92,8 @@ class Task(object):
         >>> dt = Datetime(2015, 1, 12, 11, 23, 46,
         ...               tzinfo=datetime.timezone.utc)
         >>> t = Task("try out this cool thing", dt)
-        >>> s = t.for_json()
-        >>> t_new = Task.TaskJSONDecoder().decode(s)
+        >>> d = t.to_json()
+        >>> t_new = Task.from_json(d)
         >>> t_new == t
         True
         """
@@ -113,7 +111,7 @@ class Task(object):
         }
 
     @staticmethod
-    def json_to_dict(d):
+    def json_to_dict(d: dict):
         """
         Convert the JSON representation of a task to an object
         dictionary decoding strings for timemap.util.Datetime and
@@ -128,14 +126,13 @@ class Task(object):
         return d
 
     @classmethod
-    def from_json(cls, s):
+    def from_json(cls, d: dict):
         """
-        Create a Task instance from its JSON-encoded string
-        representation.
+        Create a Task instance from its JSON representation
 
-        :param s: JSON-encoded string for the task.
+        :param d: JSON dictionary for the task
         """
-        kwargs = cls.json_to_dict(s)
+        kwargs = cls.json_to_dict(d)
 
         uid = None
         if 'uid' in kwargs:
@@ -225,32 +222,13 @@ class Event(Task):
 
     def to_json(self):
         """
-        Convert to JSON-encoded string.
+        Convert to JSON representation.  It is based almost completely
+        on its definition in the superclass.
         """
         encoded = super(Event, self).to_json()
 
         encoded['type'] = 'event'
         return encoded
-
-    @classmethod
-    def from_json(cls, s):
-        """
-        Create an Event instance from its JSON-encoded string
-        representation.
-
-        :param s: JSON-encoded string for the event
-        """
-        kwargs = cls.json_to_dict(s)
-
-        uid = None
-        if 'uid' in kwargs:
-            uid = kwargs['uid']
-            del kwargs['uid']
-
-        task = cls(**kwargs)
-        cls.uid = uid if uid is not None else uuid.uuid4()
-
-        return task
 
 
 class Assignment(Task):
@@ -298,7 +276,8 @@ class Assignment(Task):
 
     def to_json(self):
         """
-        Convert to JSON-encoded string.
+        Convert to JSON representation.  It is reliant to a large
+        extent on its implementation in the superclass.
         """
         encoded = super(Assignment, self).to_json()
 
@@ -309,7 +288,7 @@ class Assignment(Task):
         return encoded
 
     @staticmethod
-    def json_to_dict(d):
+    def json_to_dict(d: dict):
         """
         Convert the JSON representation of an assignment to an object
         dictionary decoding strings for timemap.util.Datetime and

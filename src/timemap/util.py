@@ -45,7 +45,7 @@ class Datetime(datetime.datetime):
     JSON_FORMAT = "%Y-%m-%d %H:%M:%S%z"
 
     @classmethod
-    def from_json(cls, s: str):
+    def from_json(cls, s: str or None):
         """
         Create a Datetime object from its JSON representation.
 
@@ -66,7 +66,7 @@ class Timedelta(datetime.timedelta):
     implementations for a JSON encoder and decoder.
     """
     @classmethod
-    def from_json(cls, f: float):
+    def from_json(cls, f: float or None):
         """
         Create a Timedelta object from its JSON representation.
 

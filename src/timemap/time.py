@@ -36,64 +36,41 @@ class TimeChunk(object):
         """
         return self._duration
 
-    class TimeChunkJSONEncoder(json.JSONEncoder):
+    def to_json(self):
         """
-        JSON encoder class for TimeChunk subclassing json.JSONEncoder.
-        It relies on custom JSON encoder classes for timemap.util.Datetime
-        and timemap.util.Timedelta (which are defined inside the
-        corresponding classes) to encode them as strings.
+        Convert to JSON representation.  It relies on JSON converters
+        for timemap.util.Datetime and timemap.util.Timedelta to encode
+        them as strings.
         """
-        def default(self, o: TimeChunk):
-            """
-            Convert object to JSON-serializable dictionary.
+        return {
+            'start_time': self.start_time.to_json(),
+            'duration': self._duration.to_json()
+        }
 
-            :param o: the TimeChunk object to be encoded
-            """
-            return {
-                'start_time': Datetime.DatetimeJSONEncoder().
-                encode(o.start_time),
-                'duration': Timedelta.TimedeltaJSONEncoder().
-                encode(o._duration)
-            }
-
-    class TimeChunkJSONDecoder(json.JSONDecoder):
+    @staticmethod
+    def json_to_dict(d: dict):
         """
-        JSON decoder class for TimeChunk subclassing json.JSONDecoder.
-        It relies on custom JSON decoder classes for timemap.util.Datetime
-        and timemap.util.Timedelta (which are defined inside the
-        corresponding classes) to decode them from encoded strings.
+        Convert the JSON representation of a time chunk to an object
+        dictionary decoding strings for timemap.util.Datetime and
+        timemap.util.Timedelta instances into corresponding instances.
+
+        :param d: JSON dictionary representing the time chunk
         """
-        @staticmethod
-        def to_dict(s: str):
-            """
-            Convert the JSON-encoded string for a time chunk to a
-            dictionary and then decode strings for timemap.util.Datetime
-            and timemap.util.Timedelta instances into corresponding
-            instances.
+        d['start_time'] = Datetime.from_json(d['start_time'])
+        d['duration'] = Timedelta.from_json(d.get('duration', None))
 
-            :param s: JSON-encoded string for the time chunk
-            """
-            d = json.loads(s)
+        return d
 
-            d['start_time'] = Datetime.DatetimeJSONDecoder().\
-                decode(d['start_time'])
-            d['duration'] = Timedelta.TimedeltaJSONDecoder().\
-                decode(d['duration'])
+    @classmethod
+    def from_json(cls, d: dict):
+        """
+        Create a TimeChunk instance from its JSON representation
 
-            return d
+        :param d: JSON dictionary for the time chunk
+        """
+        kwargs = cls.json_to_dict(d)
 
-        def decode(self, s: str, _w=None):
-            """
-            Create a TimeChunk instance from its JSON-encoded string
-            representation.
-
-            :param s: JSON-encoded string for the time chunk.
-            :param _w: unused variable kept to match superclass method
-                signature
-            """
-            kwargs = json.loads(s)
-
-            return TimeChunk(**kwargs)
+        return cls(**kwargs)
 
 
 class AllocatedTimeChunk(TimeChunk):
@@ -111,30 +88,18 @@ class AllocatedTimeChunk(TimeChunk):
         """
         super(AllocatedTimeChunk, self).__init__(start_time, duration)
         self._task_allocated = None
-        self.key = None
+        self._key = None
 
-    class AllocatedTimeChunkJSONEncoder(TimeChunk.TimeChunkJSONEncoder):
+    def to_json(self):
         """
-        JSON encoder class for AllocatedTimeChunk subclassing
-        TimeChunk.TimeChunkJSONEncoder.  It is reliant to a large
-        extent on its superclass to whose state it adds its allocated
-        task and the corresponding key.
+        Convert to JSON representation.  It is based almost completely
+        on its definition in the superclass.
         """
-        def default(self, o: AllocatedTimeChunk):
-            """
-            Convert object to JSON-serializable dictionary.
+        encoded = super(AllocatedTimeChunk, self).to_json()
 
-            :param o: the AllocatedTimeChunk object to be encoded
-            """
-            encoded = \
-                super(AllocatedTimeChunk.AllocatedTimeChunkJSONEncoder, self).\
-                default(o)
-
-            encoded['task_allocated'] = o._task_allocated \
-                if o._task_allocated else None
-            encoded['key'] = o.key if o._task_allocated else None
-
-            return encoded
+        encoded['task_allocated'] = self._task_allocated
+        encoded['key'] = self._key
+        return encoded
 
     class AllocatedTimeChunkJSONDecoder(TimeChunk.TimeChunkJSONDecoder):
         """
@@ -174,8 +139,8 @@ class AllocatedTimeChunk(TimeChunk):
         :param key: the key to this time chunk
         :return:
         """
-        if self.key is not None:
-            if self.key != key:
+        if self._key is not None:
+            if self._key != key:
                 raise KeyError("Task key does not match. ")
 
         self._task_allocated = task_allocated

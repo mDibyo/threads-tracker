@@ -134,13 +134,10 @@ class Task(object):
         """
         kwargs = cls.json_to_dict(d)
 
-        uid = None
-        if 'uid' in kwargs:
-            uid = kwargs['uid']
-            del kwargs['uid']
+        uid = kwargs.pop('uid', None)
 
         task = cls(**kwargs)
-        cls.uid = uid if uid is not None else uuid.uuid4()
+        task.uid = uid if uid is not None else uuid.uuid4()
 
         return task
 

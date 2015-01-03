@@ -10,8 +10,6 @@ Module structure:
 """
 
 
-import json
-
 from timemap.util import Datetime, Timedelta
 
 
@@ -101,32 +99,27 @@ class AllocatedTimeChunk(TimeChunk):
         encoded['key'] = self._key
         return encoded
 
-    class AllocatedTimeChunkJSONDecoder(TimeChunk.TimeChunkJSONDecoder):
+    @classmethod
+    def from_json(cls, d: dict):
         """
-        JSON decoder class for AllocatedTimeChunk subclassing
-        TimeChunk.TimeChunkJSONDecoder.  It is reliant to a large
-        extent on its superclass to whose state it adds its allocated
-        task and the corresponding key.
+        Create an AllocatedTimeChunk instance from its JSON representation
+
+        :param d: JSON dictionary for the allocated time chunk
         """
-        def decode(self, s: str, _w=None):
-            """
-            Create a AllocatedTimeChunk instance from its JSON-encoded
-            string representation.
+        kwargs = cls.json_to_dict(d)
 
-            :param s: JSON-encoded string for the allocated time chunk
-            :param _w: unused variable kept to match superclass method
-                signature
-            """
-            kwargs = self.to_dict(s)
+        task_allocated = kwargs.pop('task_allocated', None)
+        key = kwargs.pop('key', task_allocated)
 
-            allocatedTimeChunk = AllocatedTimeChunk(**kwargs)
-            allocatedTimeChunk.set_task_assigned(**kwargs)
+        allocated_time_chunk = cls(**kwargs)
+        if task_allocated:
+            allocated_time_chunk.set_task_allocated(task_allocated, key)
 
-            return allocatedTimeChunk
+        return allocated_time_chunk
 
-    def set_task_assigned(self,
-                          task_allocated: str,
-                          key: int):
+    def set_task_allocated(self,
+                           task_allocated: str or None,
+                           key: int or None):
         """
         Set the uid of the task to which this time chunk has been
         allocated provided the correct key is provided.  The key is
@@ -145,7 +138,7 @@ class AllocatedTimeChunk(TimeChunk):
 
         self._task_allocated = task_allocated
 
-    def get_task_assigned(self):
+    def get_task_allocated(self):
         """
         Get the uid of the task to which this time chunk has been
         allocated.

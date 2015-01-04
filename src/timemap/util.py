@@ -34,15 +34,27 @@ class UTC(datetime.tzinfo):
 class Datetime(datetime.datetime):
     """
     Subclass of datetime.datetime defined in order to add
-    implementations for a JSON encoder and decoder.
+    implementations for a JSON encoder and decoder and set the timezone
+    of all datetimes to UTC.
 
-    >>> dt = Datetime(2015, 1, 12, 11, 23, 46, tzinfo=datetime.timezone.utc)
+    >>> dt = Datetime(2015, 1, 12, 11, 23, 46)
     >>> date = datetime.datetime(2015, 1, 12, 11, 23, 46,
     ...                          tzinfo=datetime.timezone.utc)
     >>> dt == date
     True
     """
     JSON_FORMAT = "%Y-%m-%d %H:%M:%S%z"
+
+    def __new__(cls, *args, **kwargs):
+        """
+        All datetime instances are always initiated with timezone UTC
+        whenever possible
+        """
+        try:
+            return super().__new__(cls, *args, tzinfo=datetime.timezone.utc,
+                                   **kwargs)
+        except TypeError:
+            return super().__new__(cls, *args, **kwargs)
 
     @classmethod
     def from_json(cls, s: str or None):
@@ -63,7 +75,8 @@ class Datetime(datetime.datetime):
 class Timedelta(datetime.timedelta):
     """
     Subclass of datetime.timedelta defined in order to add
-    implementations for a JSON encoder and decoder.
+    implementations for a JSON encoder and decoder.  Also, defined
+    constants for common timedeltas like day, week and year.
     """
     @classmethod
     def from_json(cls, f: float or None):
@@ -79,3 +92,7 @@ class Timedelta(datetime.timedelta):
         Convert object to a JSON-string representation.
         """
         return self.total_seconds()
+
+Timedelta.HOUR = Timedelta(hours=1)
+Timedelta.DAY = Timedelta(days=1)
+Timedelta.WEEK = Timedelta(weeks=1)

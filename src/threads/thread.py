@@ -1,8 +1,16 @@
+#!/usr/bin/env python3
+
 from threads.task import *
 
 
 __author__ = "Dibyo Majumdar"
 __email__ = "dibyo.majumdar@gmail.com"
+
+__all__ = ["Thread"]
+
+
+class ThreadException(Exception):
+    pass
 
 
 class Thread(object):
@@ -22,6 +30,41 @@ class Thread(object):
         self.name = name
         self.default_importance = default_importance
         self.tasks = []
+
+    def __or__(self, other: Thread):
+        """
+        Return the union of this thread and other
+
+        :param other: the other thread
+        """
+        if not isinstance(other, Thread):
+            message = "unsupported operand type(s) for |: 'thread' and '{}'". \
+                format(type(other))
+            raise TypeError(message)
+
+        new_thread = Thread(self.name, self.default_importance)
+        new_thread.tasks = self.tasks
+
+        new_thread |= other
+        return new_thread
+
+    def __ior__(self, other: Thread):
+        """
+        Execute the in-place union operation of this thread with other
+
+        :param other: the other thread
+        """
+        if not isinstance(other, Thread):
+            message = "unsupported operand type(s) for |=: 'thread' and '{}'".\
+                format(type(other))
+            raise TypeError(message)
+        if self.name != other.name:
+            raise TypeError("cannot find union: threads are not the same")
+
+        tasks = set(self.tasks)
+        tasks |= set(other.tasks)
+
+        self.tasks = list(tasks)
 
     def to_json(self):
         """
